@@ -1,0 +1,22 @@
+<h3>
+  {{$title}}
+</h3> <!-- Sửa đóng thẻ h3 ở đây -->
+<hr>
+<a href="">thêm user</a>
+
+<div>
+   {{$content}}
+</div>
+<h3>
+    {{$pageTitle}}
+</h3>
+
+<ul>
+    <?php if (!empty($listUsers)): ?> 
+        <?php foreach ($listUsers as $item): ?>
+            <li>
+                <?php echo $item; ?>
+            </li>
+        <?php endforeach; ?> 
+    <?php endif; ?> 
+</ul>
