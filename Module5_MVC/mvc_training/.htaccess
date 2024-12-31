@@ -1,0 +1,13 @@
+# Đường dẫn đẹp (clean URL): Khi người dùng truy cập vào một URL như https://example.com/product/laptop 
+# (mà không có phần mở rộng như .html hoặc .php),
+# Apache sẽ không biết trực tiếp đường dẫn đó có phải là một tệp hoặc thư mục có thật hay không. thay vào đó,sẽ chạy vào index để xử lý 
+# (và trong index sẽ bắt được dịa chỉ thông qua GET được chuyển đổi từ biểu thức chính quy về)
+#  ==> ta có đường dẫn đẹp, mà vẫn có thể truy cập các file mong muốn
+
+
+RewriteEngine On
+
+RewriteCond %{REQUEST_FILENAME} !-d  
+RewriteCond %{REQUEST_FILENAME} !-f   
+
+RewriteRule ^(.+)$ index.php/$1 [L,QSA]  
