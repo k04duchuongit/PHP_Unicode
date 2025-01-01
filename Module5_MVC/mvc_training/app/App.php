@@ -2,10 +2,11 @@
 class App
 {
     private $__controller, $__action, $__params, $__routes;
-
+    static public $app;
     function __construct()
     {
         global $routes, $config;
+        self::$app = $this;
 
         $this->__routes = new Route();
 
@@ -39,7 +40,7 @@ class App
         $urlArr = array_values($urlArr);    //đánh lại key của mảng
 
         $urlCheck = ''; // Khởi tạo chuỗi rỗng để xây dựng đường dẫn
-     
+
 
         if (!empty($urlArr)) {
             foreach ($urlArr as $key => $item) {
@@ -102,8 +103,9 @@ class App
         }
     }
 
-    public function loadError($name = '404')
+    public function loadError($name = '404', $data = [])
     {
+        extract($data);
         require_once 'errors/' . $name . '.php';
     }
 }

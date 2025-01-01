@@ -10,6 +10,7 @@ class Database
         var_dump($this->__conn);
     }
 
+    //Thêm đữ liệu
     function insert($table, $data)
     {
         if (!empty($data)) {
@@ -82,13 +83,20 @@ class Database
     //Truy vấn câu lệnh SQL
     function query($sql)
     {
+        try {
+            $statement = $this->__conn->prepare($sql);
 
-        $statement = $this->__conn->prepare($sql);
+            $statement->execute();
 
-        $statement->execute();
-
-        return $statement;
+            return $statement;
+        } catch (PDOException $e) {
+            $mess =  'Lỗi: ' . $e->getMessage();
+            $data['mess'] = $mess;            //gán lỗi vào mảng data
+            App::$app->loadError('database',['message'=>$mess]); //load trang lỗi
+            die();
+        }
     }
+
     //Trả về id mới nhất sau khi đã insert
     function lastInsertId()
     {

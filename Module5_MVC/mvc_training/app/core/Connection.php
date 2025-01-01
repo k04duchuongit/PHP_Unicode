@@ -9,7 +9,6 @@ class Connection
             // Thay các hằng số dưới bằng giá trị phù hợp hoặc đặt trong config
             $dsn = 'mysql:dbname=' . $config['db'] . ';host=' . $config['host'];
 
-
             $options = [
                 PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES utf8',
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
@@ -21,8 +20,9 @@ class Connection
         } catch (PDOException $e) {
             $mess = $e->getMessage();
 
-            // Các lỗi khác
-            die('Lỗi kết nối: ' . $mess);
+            $data['mess'] = $mess;            //gán lỗi vào mảng data
+            App::$app->loadError('exception',['message'=>$mess]); //load trang lỗi
+            die();
         }
     }
 
@@ -30,11 +30,9 @@ class Connection
     public static function getInstance($config)
     {
         if (self::$instance === null) {
-
             $connection  = new Connection($config);
             self::$instance = self::$conn;
         }
         return self::$instance;
     }
-
 }
