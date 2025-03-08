@@ -1,0 +1,16 @@
+{
+    "name": "unicode/module7",
+    "description": "demo composer",
+    "authors": [
+        {
+            "name": "duchuongk04",
+            "email": "duchuongahihi1412@gmail.com"
+        }
+    ],
+    "require": {
+     
+    },
+    "require-dev": {
+        "phpoffice/phpword": "^1.3"
+    }
+}
