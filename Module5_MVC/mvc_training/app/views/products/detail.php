@@ -1,3 +1,0 @@
-
-chi tiet san pham
-

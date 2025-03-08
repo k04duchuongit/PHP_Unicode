@@ -1,9 +1,15 @@
 <?php
 $config['app'] = [
-    'service' => [],
-    'routeMiddleware' => [],
-    'globalMiddleware' => [],
+    'service' => [
+
+    ],
+    'routeMiddleware' => [
+
+    ],
+    'globalMiddleware' => [
+
+    ],
     'boot' => [
-        // AppServiceProvider::class,
+        AppServiceProvider::class,
     ],
 ];

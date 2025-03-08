@@ -1,111 +1,213 @@
 <?php
-class App
-{
-    private $__controller, $__action, $__params, $__routes;
+class App{
+
+    private $__controller, $__action, $__params, $__routes, $__db;
+
     static public $app;
-    function __construct()
-    {
+
+    function __construct(){
+
         global $routes, $config;
+
         self::$app = $this;
 
         $this->__routes = new Route();
 
-        if (!empty($routes['default_controller'])) {
+        if (!empty($routes['default_controller'])){ 
             $this->__controller = $routes['default_controller'];
         }
 
         $this->__action = 'index';
         $this->__params = [];
 
-        $url = $this->handleUrl();
+        if (class_exists('DB')){ // Nếu class DB tồn tại
+            $dbObject = new DB();
+            $this->__db = $dbObject->db;
+        }
+
+        $this->handleUrl();  
     }
 
-    function getUrl()
-    {
-        if (!empty($_SERVER['PATH_INFO'])) {
+    function getUrl(){
+        if (!empty($_SERVER['PATH_INFO'])){
             $url = $_SERVER['PATH_INFO'];
-        } else {
+        }else{
             $url = '/';
         }
+
         return $url;
     }
 
-    public function handleUrl()
-    {
+    public function handleUrl(){
+
         $url = $this->getUrl();
 
-        $url =  $this->__routes->handleRoute($url);
+        $url = $this->__routes->handleRoute($url);
 
-        $urlArr = array_filter(explode('/', $url));    //tách chuỗi thành mảng và loại bỏ các phần tử rỗng
-        $urlArr = array_values($urlArr);    //đánh lại key của mảng
+        //Middleware App
+        $this->handleGlobalMiddleware($this->__db);  //
+        $this->handleRouteMiddleware($this->__routes->getUri(), $this->__db);
 
-        $urlCheck = ''; // Khởi tạo chuỗi rỗng để xây dựng đường dẫn
+        //App Service Provider
+        $this->handleAppServiceProvider($this->__db);
 
+        $urlArr = array_filter(explode('/',$url));
+        $urlArr = array_values($urlArr);
 
-        if (!empty($urlArr)) {
-            foreach ($urlArr as $key => $item) {
-                $urlCheck .= $item . '/';               // Nối các phần tử với ký tự '/' để tạo đường dẫn
-                $fileCheck = rtrim($urlCheck, '/');     // Loại bỏ ký tự '/' ở cuối chuỗi
-                $fileArr = explode('/', $fileCheck);   // Tách chuỗi thành mảng các phần tử dựa trên dấu '/'
-                $fileArr[count($fileArr) - 1] = ucfirst($fileArr[count($fileArr) - 1]);        // Viết hoa chữ cái đầu của phần tử cuối cùng trong mảng
+        $urlCheck = '';
+        if (!empty($urlArr)){
+            foreach ($urlArr as $key=>$item){
+                $urlCheck.=$item.'/';
+                $fileCheck = rtrim($urlCheck, '/');
+                $fileArr = explode('/', $fileCheck);
+                $fileArr[count($fileArr)-1] = ucfirst($fileArr[count($fileArr)-1]);
+                $fileCheck = implode('/', $fileArr);
 
-                $fileCheck = implode('/', $fileArr); // Ghép lại các phần tử mảng thành chuỗi với dấu '/'
-                if (!empty(($urlArr[$key - 1]))) {
-                    unset($urlArr[$key - 1]);
+                if (!empty($urlArr[$key-1])){
+                    unset($urlArr[$key-1]);
                 }
 
-                if (file_exists('app/controllers/' . ($fileCheck) . '.php')) {
-                    // Kiểm tra file có tồn tại trong thư mục app/controllers/admin không
-                    $urlCheck = $fileCheck; // Lưu giá trị file hợp lệ vào $urlCheck
-                    break; // Thoát khỏi vòng lặp khi tìm thấy file
+                if (file_exists('app/controllers/'.($fileCheck).'.php')){
+                    $urlCheck = $fileCheck;
+                    break;
                 }
             }
-            $urlArr = array_values($urlArr); // Đánh lại key của mảng
+
+            $urlArr = array_values($urlArr);
         }
 
 
+        //Xử lý controller
+        if (!empty($urlArr[0])){
 
-        // xử lý controller
-        if (!empty($urlArr[0])) {
-
-            $this->__controller = ucfirst($urlArr[0]); //ucfirst: chuyển ký tự đầu tiên của chuỗi thành chữ hoa
-        } else {
-            $this->__controller = ucfirst($this->__controller);   // nếu không có controller thì mặc định là home
+            $this->__controller = ucfirst($urlArr[0]);
+        }else{
+            $this->__controller = ucfirst($this->__controller);
         }
 
-        if (empty($urlCheck)) {   // xử lý khi không có đường dẫn (thì vào trang chủ)
+        //Xử lý khi $urlCheck rỗng
+        if (empty($urlCheck)){
             $urlCheck = $this->__controller;
         }
-        if (file_exists('app/controllers/' . $urlCheck . '.php')) {
-            require_once 'controllers/' . $urlCheck  . '.php';
 
-            $this->__controller = new $this->__controller; //tạo đối tượng mới từ class (tên lớp ở đây là giá trị động)
-            unset($urlArr[0]);
-        } else {
-            $this->loadError('404');
+        if (file_exists('app/controllers/'.$urlCheck.'.php')){
+            require_once 'controllers/'.$urlCheck.'.php';
+
+            //Kiểm tra class $this->__controller tồn tại
+            if (class_exists($this->__controller)){
+                $this->__controller = new $this->__controller();
+                unset($urlArr[0]);
+
+                if (!empty($this->__db)){
+                    $this->__controller->db = $this->__db;
+                }
+
+            }else{
+                $this->loadError();
+            }
+
+        }else{
+            $this->loadError();
         }
 
-
-        //xử lý action
-        if (!empty($urlArr[1])) {
+        //Xử lý action
+        if (!empty($urlArr[1])){
             $this->__action = $urlArr[1];
             unset($urlArr[1]);
         }
+
 
         //Xử lý params
         $this->__params = array_values($urlArr);
 
         //Kiểm tra method tồn tại
-        if (method_exists($this->__controller, $this->__action)) {
-            call_user_func_array([$this->__controller, $this->__action], $this->__params); // gọi hàm , hoặc phương thức của đối tượng khi không biết số lượng tham số truyền vào
-        } else {
+        if (method_exists($this->__controller, $this->__action)){
+            call_user_func_array([$this->__controller, $this->__action], $this->__params);
+        }else{
             $this->loadError();
+        }
+
+
+    }
+
+    public function getCurrentController(){
+        return $this->__controller;
+    }
+
+    public function loadError($name='404', $data = []){
+        extract($data);
+        require_once 'errors/'.$name.'.php';
+    }
+
+    public function handleRouteMiddleware($routeKey, $db){
+        global $config;
+        $routeKey = trim($variable ?? '');
+        if (!empty($config['app']['routeMiddleware'])){
+            $routeMiddleWareArr = $config['app']['routeMiddleware'];
+            foreach ($routeMiddleWareArr as $key=>$middleWareItem){
+                if ($routeKey==trim($key) && file_exists('app/middlewares/'.$middleWareItem.'.php')){
+                    require_once 'app/middlewares/'.$middleWareItem.'.php';
+                    if (class_exists($middleWareItem)){
+                        $middleWareObject = new $middleWareItem();
+                        if (!empty($db)){
+                            $middleWareObject->db = $db;
+                        }
+                        $middleWareObject->handle();
+                    }
+                }
+            }
         }
     }
 
-    public function loadError($name = '404', $data = [])
-    {
-        extract($data);
-        require_once 'errors/' . $name . '.php';
+    public function handleGlobalMiddleware($db){
+        global $config; // Truy cập biến cấu hình toàn cục
+    
+        // Kiểm tra nếu có middleware toàn cục trong cấu hình
+        if (!empty($config['app']['globalMiddleware'])) {
+            $globalMiddleWareArr = $config['app']['globalMiddleware']; // Lấy danh sách middleware toàn cục
+    
+            // Duyệt qua từng middleware
+            foreach ($globalMiddleWareArr as $key => $middleWareItem) {
+                $middlewarePath = 'app/middlewares/' . $middleWareItem . '.php'; // Đường dẫn file middleware
+    
+                // Kiểm tra file middleware có tồn tại không
+                if (file_exists($middlewarePath)) {
+                    require_once $middlewarePath; // Nạp file middleware
+    
+                    // Kiểm tra class của middleware có tồn tại không
+                    if (class_exists($middleWareItem)) {
+                        $middleWareObject = new $middleWareItem(); // Tạo đối tượng middleware
+    
+                        // Nếu có database, truyền vào middleware
+                        if (!empty($db)) {
+                            $middleWareObject->db = $db;
+                        }
+    
+                        $middleWareObject->handle(); // Gọi phương thức xử lý của middleware
+                    }
+                }
+            }
+        }
     }
+
+    public function handleAppServiceProvider($db){
+        global $config;
+
+        if (!empty($config['app']['boot'])){
+            $serviceProviderArr = $config['app']['boot'];
+            foreach ($serviceProviderArr as $serviceName){
+                if (file_exists('app/core/'.$serviceName.'.php')){
+                    require_once 'app/core/'.$serviceName.'.php';
+                    if (class_exists($serviceName)){
+                        $serviceObject = new $serviceName();
+                        if (!empty($db)){
+                            $serviceObject->db = $db;
+                        }
+                        $serviceObject->boot();
+                    }
+                }
+            }
+        }
+    }
+
 }

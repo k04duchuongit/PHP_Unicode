@@ -3,3 +3,4 @@
     <hr/>
     <p><?php echo (!empty($message))?$message:false; ?></p>
 </div>
+
